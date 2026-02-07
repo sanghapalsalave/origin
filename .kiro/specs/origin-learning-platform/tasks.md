@@ -175,7 +175,7 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
     - **Property 6: Cosine Similarity Bounds**
     - **Validates: Requirements 2.3, 2.4**
 
-  - [-] 6.5 Implement squad formation logic
+  - [x] 6.5 Implement squad formation logic
     - Write create_new_squad method
     - Enforce similarity threshold > 0.7
     - Enforce squad size constraints (12-15 members)
@@ -190,27 +190,27 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
     - **Property 8: Squad Size Constraints**
     - **Validates: Requirements 2.6, 2.8**
 
-  - [ ] 6.8 Implement waiting pool management
+  - [x] 6.8 Implement waiting pool management
     - Write get_waiting_pool and add_to_waiting_pool methods
     - Implement notification when matches become available
     - _Requirements: 2.7_
 
-  - [ ] 6.9 Create matching API endpoints
+  - [x] 6.9 Create matching API endpoints
     - Implement POST /guilds/{guild_id}/join, GET /squads/matches
     - Return squad matches or waiting pool status
     - _Requirements: 2.2, 2.7_
 
-- [ ] 7. Checkpoint - Ensure matching engine tests pass
+- [x] 7. Checkpoint - Ensure matching engine tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
 - [ ] 8. Implement Guild Master AI service
-  - [ ] 8.1 Create Syllabus, SyllabusDay, Task, Resource data models
+  - [x] 8.1 Create Syllabus, SyllabusDay, Task, Resource data models
     - Define SQLAlchemy models for syllabus structure
     - Create database migrations
     - _Requirements: 3.1, 3.2_
 
-  - [ ] 8.2 Implement syllabus generation with LLM
+  - [x] 8.2 Implement syllabus generation with LLM
     - Write generate_syllabus method using OpenAI GPT-4o or Gemini 1.5 Pro
     - Analyze squad member skill levels
     - Generate 30-day curriculum with daily objectives, tasks, resources
@@ -221,7 +221,7 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
     - **Property 9: Syllabus Structure Completeness**
     - **Validates: Requirements 3.1, 3.2**
 
-  - [ ] 8.4 Implement syllabus pivot logic
+  - [x] 8.4 Implement syllabus pivot logic
     - Write pivot_syllabus method
     - Monitor daily completion rates
     - Trigger pivot when completion < 60% for 3 consecutive days
@@ -241,7 +241,7 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
     - **Property 11: Weekly Syllabus Updates**
     - **Validates: Requirements 3.5**
 
-  - [ ] 8.8 Implement content unlocking
+  - [x] 8.8 Implement content unlocking
     - Write unlock_next_day method
     - Trigger on syllabus day completion
     - Unlock for all squad members
@@ -298,12 +298,12 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
 
 
 - [ ] 10. Implement learning velocity tracking
-  - [ ] 10.1 Create TaskCompletion data model
+  - [x] 10.1 Create TaskCompletion data model
     - Define SQLAlchemy model for task completions with timestamps
     - Create database migration
     - _Requirements: 4.1_
 
-  - [ ] 10.2 Implement task completion recording
+  - [x] 10.2 Implement task completion recording
     - Write record_task_completion method
     - Store completion timestamp
     - _Requirements: 4.1_
@@ -312,7 +312,7 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
     - **Property 13: Task Completion Timestamp Recording**
     - **Validates: Requirements 4.1**
 
-  - [ ] 10.4 Implement learning velocity calculation
+  - [x] 10.4 Implement learning velocity calculation
     - Write get_learning_velocity method
     - Calculate average time between assignments and completions
     - Track separately by task type (reading, coding, projects)
@@ -323,7 +323,7 @@ This implementation plan breaks down the ORIGIN learning platform into discrete,
     - **Property 16: Task Type Velocity Partitioning**
     - **Validates: Requirements 4.2, 4.4**
 
-  - [ ] 10.6 Implement velocity-based embedding updates
+  - [x] 10.6 Implement velocity-based embedding updates
     - Write update_vector_embedding method
     - Trigger update when velocity changes > 50%
     - _Requirements: 4.3_
