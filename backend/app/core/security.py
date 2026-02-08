@@ -1,10 +1,20 @@
 """
 Security utilities for authentication and encryption.
+
+Implements Requirements:
+- 15.1: Password hashing with bcrypt (12 rounds minimum)
+- 15.2: Sensitive data encryption at rest using AES-256
 """
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt
 from passlib.context import CryptContext
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.backends import default_backend
+import base64
+import os
 from app.core.config import settings
 
 # Password hashing context with bcrypt (12 rounds minimum)
@@ -73,3 +83,130 @@ def get_password_hash(password: str) -> str:
         Hashed password
     """
     return pwd_context.hash(password)
+
+
+
+# Encryption utilities for sensitive data at rest (AES-256)
+class DataEncryption:
+    """
+    Utility class for encrypting and decrypting sensitive data at rest.
+    
+    Uses AES-256 encryption via Fernet (symmetric encryption).
+    Implements Requirement 15.2: Sensitive data encryption at rest.
+    """
+    
+    def __init__(self, encryption_key: Optional[str] = None):
+        """
+        Initialize encryption with a key.
+        
+        Args:
+            encryption_key: Base64-encoded encryption key. If None, uses settings.
+        """
+        if encryption_key is None:
+            # Use encryption key from settings or generate one
+            encryption_key = getattr(settings, 'ENCRYPTION_KEY', None)
+            if encryption_key is None:
+                # Generate a key if not provided (for development only)
+                encryption_key = Fernet.generate_key().decode()
+        
+        # Ensure key is bytes
+        if isinstance(encryption_key, str):
+            encryption_key = encryption_key.encode()
+        
+        self.fernet = Fernet(encryption_key)
+    
+    def encrypt(self, data: str) -> str:
+        """
+        Encrypt sensitive data using AES-256.
+        
+        Args:
+            data: Plain text data to encrypt
+            
+        Returns:
+            Base64-encoded encrypted data
+        """
+        if data is None:
+            return None
+        
+        # Convert to bytes if string
+        if isinstance(data, str):
+            data = data.encode()
+        
+        # Encrypt and return as base64 string
+        encrypted = self.fernet.encrypt(data)
+        return base64.b64encode(encrypted).decode()
+    
+    def decrypt(self, encrypted_data: str) -> str:
+        """
+        Decrypt sensitive data.
+        
+        Args:
+            encrypted_data: Base64-encoded encrypted data
+            
+        Returns:
+            Decrypted plain text data
+        """
+        if encrypted_data is None:
+            return None
+        
+        # Decode from base64
+        encrypted_bytes = base64.b64decode(encrypted_data.encode())
+        
+        # Decrypt and return as string
+        decrypted = self.fernet.decrypt(encrypted_bytes)
+        return decrypted.decode()
+
+
+# Global encryption instance
+_encryption_instance = None
+
+
+def get_encryption() -> DataEncryption:
+    """
+    Get global encryption instance (singleton pattern).
+    
+    Returns:
+        DataEncryption instance
+    """
+    global _encryption_instance
+    if _encryption_instance is None:
+        _encryption_instance = DataEncryption()
+    return _encryption_instance
+
+
+def encrypt_sensitive_data(data: str) -> str:
+    """
+    Encrypt sensitive data using AES-256.
+    
+    Implements Requirement 15.2: Sensitive data encryption at rest.
+    
+    Args:
+        data: Plain text data to encrypt
+        
+    Returns:
+        Encrypted data as base64 string
+    """
+    return get_encryption().encrypt(data)
+
+
+def decrypt_sensitive_data(encrypted_data: str) -> str:
+    """
+    Decrypt sensitive data.
+    
+    Args:
+        encrypted_data: Encrypted data as base64 string
+        
+    Returns:
+        Decrypted plain text data
+    """
+    return get_encryption().decrypt(encrypted_data)
+
+
+def generate_encryption_key() -> str:
+    """
+    Generate a new encryption key for AES-256.
+    
+    Returns:
+        Base64-encoded encryption key
+    """
+    return Fernet.generate_key().decode()

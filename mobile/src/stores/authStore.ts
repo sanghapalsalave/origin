@@ -1,5 +1,6 @@
 /**
  * Authentication state management using Zustand
+ * Implements secure token storage with AsyncStorage
  */
 import {create} from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +15,13 @@ interface AuthState {
   loadAuth: () => Promise<void>;
 }
 
+// Storage keys
+const STORAGE_KEYS = {
+  ACCESS_TOKEN: '@origin:accessToken',
+  REFRESH_TOKEN: '@origin:refreshToken',
+  USER_ID: '@origin:userId',
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   accessToken: null,
@@ -21,41 +29,69 @@ export const useAuthStore = create<AuthState>((set) => ({
   userId: null,
 
   setTokens: async (accessToken: string, refreshToken: string, userId: string) => {
-    await AsyncStorage.setItem('accessToken', accessToken);
-    await AsyncStorage.setItem('refreshToken', refreshToken);
-    await AsyncStorage.setItem('userId', userId);
-    set({
-      isAuthenticated: true,
-      accessToken,
-      refreshToken,
-      userId,
-    });
+    try {
+      // Store tokens securely in AsyncStorage
+      await AsyncStorage.multiSet([
+        [STORAGE_KEYS.ACCESS_TOKEN, accessToken],
+        [STORAGE_KEYS.REFRESH_TOKEN, refreshToken],
+        [STORAGE_KEYS.USER_ID, userId],
+      ]);
+      
+      set({
+        isAuthenticated: true,
+        accessToken,
+        refreshToken,
+        userId,
+      });
+    } catch (error) {
+      console.error('Failed to store auth tokens:', error);
+      throw error;
+    }
   },
 
   clearAuth: async () => {
-    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
-    set({
-      isAuthenticated: false,
-      accessToken: null,
-      refreshToken: null,
-      userId: null,
-    });
+    try {
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.ACCESS_TOKEN,
+        STORAGE_KEYS.REFRESH_TOKEN,
+        STORAGE_KEYS.USER_ID,
+      ]);
+      
+      set({
+        isAuthenticated: false,
+        accessToken: null,
+        refreshToken: null,
+        userId: null,
+      });
+    } catch (error) {
+      console.error('Failed to clear auth tokens:', error);
+      throw error;
+    }
   },
 
   loadAuth: async () => {
-    const [accessToken, refreshToken, userId] = await AsyncStorage.multiGet([
-      'accessToken',
-      'refreshToken',
-      'userId',
-    ]);
-    
-    if (accessToken[1] && refreshToken[1] && userId[1]) {
-      set({
-        isAuthenticated: true,
-        accessToken: accessToken[1],
-        refreshToken: refreshToken[1],
-        userId: userId[1],
-      });
+    try {
+      const values = await AsyncStorage.multiGet([
+        STORAGE_KEYS.ACCESS_TOKEN,
+        STORAGE_KEYS.REFRESH_TOKEN,
+        STORAGE_KEYS.USER_ID,
+      ]);
+      
+      const accessToken = values[0][1];
+      const refreshToken = values[1][1];
+      const userId = values[2][1];
+      
+      if (accessToken && refreshToken && userId) {
+        set({
+          isAuthenticated: true,
+          accessToken,
+          refreshToken,
+          userId,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load auth tokens:', error);
+      // Don't throw - just leave user unauthenticated
     }
   },
 }));

@@ -41,7 +41,7 @@ class Guild(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # For private guilds (B2B)
-    company_id = Column(UUID(as_uuid=True), nullable=True)  # Reference to company account
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True)  # Reference to company account
     allowed_email_domains = Column(ARRAY(String), nullable=True)  # e.g., ["company.com", "subsidiary.com"]
     custom_objectives = Column(ARRAY(String), nullable=True)  # Company-specified learning objectives
     
@@ -54,6 +54,7 @@ class Guild(Base):
     squads = relationship("Squad", back_populates="guild", cascade="all, delete-orphan", lazy="dynamic")
     memberships = relationship("GuildMembership", back_populates="guild", cascade="all, delete-orphan", lazy="dynamic")
     expert_facilitator = relationship("User", foreign_keys=[expert_facilitator_id], lazy="joined")
+    company = relationship("Company", back_populates="private_guilds", foreign_keys=[company_id])
     
     def __repr__(self) -> str:
         return f"<Guild(id={self.id}, name={self.name}, type={self.guild_type}, interest_area={self.interest_area})>"

@@ -1,0 +1,183 @@
+# Alert rules for ORIGIN Learning Platform
+
+groups:
+  - name: api_performance
+    interval: 30s
+    rules:
+      # API response time alert
+      - alert: HighAPIResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API response time (p95 > 500ms)"
+          description: "API p95 response time is {{ $value }}s for endpoint {{ $labels.endpoint }}"
+
+      # API error rate alert
+      - alert: HighAPIErrorRate
+        expr: rate(http_request_errors_total[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API error rate (> 5%)"
+          description: "API error rate is {{ $value | humanizePercentage }} for endpoint {{ $labels.endpoint }}"
+
+  - name: external_services
+    interval: 1m
+    rules:
+      # External service down
+      - alert: ExternalServiceDown
+        expr: external_service_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "External service {{ $labels.service }} is down"
+          description: "{{ $labels.service }} has been unavailable for 5 minutes"
+
+      # External service high latency
+      - alert: ExternalServiceHighLatency
+        expr: external_service_latency_seconds > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency for {{ $labels.service }}"
+          description: "{{ $labels.service }} latency is {{ $value }}s"
+
+  - name: retry_logic
+    interval: 1m
+    rules:
+      # Low retry success rate
+      - alert: LowRetrySuccessRate
+        expr: rate(retry_success_total[10m]) / rate(retry_attempts_total[10m]) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low retry success rate (< 50%)"
+          description: "Retry success rate is {{ $value | humanizePercentage }} for {{ $labels.service }}"
+
+      # Circuit breaker open
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.service }}"
+          description: "Circuit breaker has been open for 10 minutes"
+
+  - name: user_impact
+    interval: 1m
+    rules:
+      # High user error rate
+      - alert: HighUserErrorRate
+        expr: rate(user_errors_total[5m]) / rate(http_requests_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High user-facing error rate (> 1%)"
+          description: "User error rate is {{ $value | humanizePercentage }}"
+
+      # Portfolio analysis failures
+      - alert: HighPortfolioAnalysisFailureRate
+        expr: rate(portfolio_analysis_failures_total[10m]) / rate(portfolio_analysis_total[10m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High portfolio analysis failure rate (> 10%)"
+          description: "Portfolio analysis failure rate is {{ $value | humanizePercentage }}"
+
+      # Squad matching failures
+      - alert: HighSquadMatchingFailureRate
+        expr: rate(squad_matching_failures_total[10m]) / rate(squad_matching_total[10m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High squad matching failure rate (> 5%)"
+          description: "Squad matching failure rate is {{ $value | humanizePercentage }}"
+
+  - name: background_jobs
+    interval: 1m
+    rules:
+      # High task failure rate
+      - alert: HighCeleryTaskFailureRate
+        expr: rate(celery_task_failures_total[10m]) / rate(celery_task_total[10m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Celery task failure rate (> 10%)"
+          description: "Task failure rate is {{ $value | humanizePercentage }} for {{ $labels.task_type }}"
+
+      # High queue length
+      - alert: HighCeleryQueueLength
+        expr: celery_queue_length > 1000
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Celery queue length (> 1000)"
+          description: "Queue {{ $labels.queue }} has {{ $value }} tasks pending"
+
+  - name: database
+    interval: 1m
+    rules:
+      # Slow queries
+      - alert: HighDatabaseQueryTime
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database query time (p95 > 100ms)"
+          description: "Database query p95 is {{ $value }}s"
+
+      # High connection pool usage
+      - alert: HighDatabaseConnectionPoolUsage
+        expr: db_connections_active / db_connections_max > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connection pool usage (> 80%)"
+          description: "Connection pool is {{ $value | humanizePercentage }} utilized"
+
+  - name: system
+    interval: 1m
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage (> 80%)"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage (> 85%)"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Disk space low
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space (< 15%)"
+          description: "Disk space is {{ $value }}% available on {{ $labels.instance }}"

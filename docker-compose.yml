@@ -18,6 +18,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - origin-network
 
   # Redis Cache
   redis:
@@ -32,6 +34,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - origin-network
 
   # FastAPI Backend
   backend:
@@ -52,6 +56,8 @@ services:
       - POSTGRES_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,14 +65,17 @@ services:
         condition: service_healthy
     env_file:
       - ./backend/.env
+    networks:
+      - origin-network
+    restart: unless-stopped
 
-  # Celery Worker
-  celery_worker:
+  # Celery Worker (High Priority)
+  celery_worker_high:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: origin-celery-worker
-    command: celery -A app.core.celery_app worker --loglevel=info
+      dockerfile: Dockerfile.celery
+    container_name: origin-celery-worker-high
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q high_priority
     volumes:
       - ./backend:/app
     environment:
@@ -77,6 +86,8 @@ services:
       - POSTGRES_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,12 +95,75 @@ services:
         condition: service_healthy
     env_file:
       - ./backend/.env
+    networks:
+      - origin-network
+    restart: unless-stopped
+
+  # Celery Worker (Default Priority)
+  celery_worker_default:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    container_name: origin-celery-worker-default
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q default
+    volumes:
+      - ./backend:/app
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=origin
+      - POSTGRES_PASSWORD=origin_dev_password
+      - POSTGRES_DB=origin_db
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    networks:
+      - origin-network
+    restart: unless-stopped
+
+  # Celery Worker (Low Priority)
+  celery_worker_low:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    container_name: origin-celery-worker-low
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q low_priority
+    volumes:
+      - ./backend:/app
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=origin
+      - POSTGRES_PASSWORD=origin_dev_password
+      - POSTGRES_DB=origin_db
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    networks:
+      - origin-network
+    restart: unless-stopped
 
   # Celery Beat (Scheduler)
   celery_beat:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.celery-beat
     container_name: origin-celery-beat
     command: celery -A app.core.celery_app beat --loglevel=info
     volumes:
@@ -102,6 +176,8 @@ services:
       - POSTGRES_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,7 +185,32 @@ services:
         condition: service_healthy
     env_file:
       - ./backend/.env
+    networks:
+      - origin-network
+    restart: unless-stopped
+
+  # Flower (Celery Monitoring)
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: origin-flower
+    command: celery -A app.core.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - origin-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  origin-network:
+    driver: bridge
